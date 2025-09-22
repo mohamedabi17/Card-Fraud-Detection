@@ -1,0 +1,164 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ccf_postgres
+    environment:
+      POSTGRES_DB: ccf_db
+      POSTGRES_USER: ccf_user
+      POSTGRES_PASSWORD: ccf_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    networks:
+      - ccf_network
+    restart: unless-stopped
+
+  # PgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ccf_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ccf.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - ccf_network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Redis for Airflow
+  redis:
+    image: redis:7-alpine
+    container_name: ccf_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - ccf_network
+    restart: unless-stopped
+
+  # Airflow Webserver
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: ccf_airflow_webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://ccf_user:ccf_password@postgres:5432/ccf_db
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://ccf_user:ccf_password@postgres:5432/ccf_db
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CORE__FERNET_KEY=ZmDfcTF7_60GrrY167zsiPd67pEvs0aGqv2oasOM1Pg=
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./data:/opt/airflow/data
+      - ./logs:/opt/airflow/logs
+      - ./config:/opt/airflow/config
+      - airflow_logs:/opt/airflow/logs
+    networks:
+      - ccf_network
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    command: webserver
+
+  # Airflow Scheduler
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: ccf_airflow_scheduler
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://ccf_user:ccf_password@postgres:5432/ccf_db
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://ccf_user:ccf_password@postgres:5432/ccf_db
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CORE__FERNET_KEY=ZmDfcTF7_60GrrY167zsiPd67pEvs0aGqv2oasOM1Pg=
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./data:/opt/airflow/data
+      - ./logs:/opt/airflow/logs
+      - ./config:/opt/airflow/config
+      - airflow_logs:/opt/airflow/logs
+    networks:
+      - ccf_network
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    command: scheduler
+
+  # Airflow Worker
+  airflow-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: ccf_airflow_worker
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://ccf_user:ccf_password@postgres:5432/ccf_db
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://ccf_user:ccf_password@postgres:5432/ccf_db
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CORE__FERNET_KEY=ZmDfcTF7_60GrrY167zsiPd67pEvs0aGqv2oasOM1Pg=
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./data:/opt/airflow/data
+      - ./logs:/opt/airflow/logs
+      - ./config:/opt/airflow/config
+      - airflow_logs:/opt/airflow/logs
+    networks:
+      - ccf_network
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    command: celery worker
+
+  # Jupyter Notebook for data exploration
+  jupyter:
+    image: jupyter/pyspark-notebook:latest
+    container_name: ccf_jupyter
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=ccf_token
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./data:/home/jovyan/data
+      - ./notebooks:/home/jovyan/notebooks
+    networks:
+      - ccf_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  airflow_logs:
+
+networks:
+  ccf_network:
+    driver: bridge
