@@ -1,9 +1,9 @@
 # Credit Card Fraud Detection - Data Engineering Pipeline
 
-## 🎯 Objectif
+##  Objectif
 Pipeline de Data Engineering end-to-end pour la détection de fraude par carte de crédit utilisant Python, PySpark, PostgreSQL et Apache Airflow.
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 project-ccf/
@@ -24,7 +24,7 @@ project-ccf/
 └─ requirements.txt
 ```
 
-## 🚀 Setup Rapide
+## Setup Rapide
 
 ### 1. Environnement virtuel
 ```bash
@@ -54,12 +54,12 @@ airflow scheduler &
 airflow webserver -p 8080
 ```
 
-## 📊 Dataset
+##  Dataset
 - **Source**: [Kaggle - Credit Card Fraud Detection](https://www.kaggle.com/mlg-ulb/creditcardfraud)
 - **Taille**: ~150MB, 284,807 transactions
 - **Features**: V1-V28 (PCA), Time, Amount, Class (0=Normal, 1=Fraud)
 
-## 🔄 Pipeline Steps
+##  Pipeline Steps
 
 1. **Ingestion** (`ingest.py`)
    - Download Kaggle dataset
@@ -84,7 +84,7 @@ airflow webserver -p 8080
 - Logging avec Loguru
 - Tests avec pytest
 
-## 🏃‍♂️ Execution
+##  Execution
 
 ### Manuel
 ```bash
