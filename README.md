@@ -79,7 +79,7 @@ airflow webserver -p 8080
    - Schedule daily runs
    - Error handling & monitoring
 
-## 📈 Monitoring & Quality
+##  Monitoring & Quality
 - Data quality checks avec Great Expectations
 - Logging avec Loguru
 - Tests avec pytest
